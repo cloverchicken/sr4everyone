@@ -1,1 +1,997 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Interactive bilingual (VI/EN) learning tool for data types in scientific research (NCKH): Nominal, Ordinal, Continuous.">
+    <title>Các Loại Dữ Liệu Trong NCKH | Data Types in Scientific Research</title>
+    <!-- Google Fonts: Montserrat -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 15px;
+            color: #1e293b;
+        }
+        .main-title {
+            font-size: 30px;
+            line-height: 1.2;
+            font-weight: 900;
+        }
+        .text-normal { font-size: 15px; }
+        .text-small { font-size: 10px; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .animate-fadeIn { animation: fadeIn 0.4s ease-out; }
+        .animate-slideUp { animation: slideUp 0.3s ease-out; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .jasp-step { border-left: 2px solid #e2e8f0; padding-left: 1rem; margin-bottom: 0.75rem; position: relative; }
+        .jasp-step::before { content: ''; position: absolute; left: -5px; top: 0; width: 8px; height: 8px; border-radius: 50%; background: #3b82f6; }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div id="root"></div>
 
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        // --- TRANSLATIONS DICTIONARY ---
+        const translations = {
+            vi: {
+                appNamePrefix: "CÁC LOẠI DỮ LIỆU",
+                appNameSuffix: "TRONG NCKH",
+                steps: ["Khởi động", "Thiết kế", "Thu thập", "Phân tích", "Tổng kết"],
+                next: "Tiếp theo",
+                prev: "Quay lại",
+                check: "Kiểm tra đáp án",
+                correct: "Đúng!",
+                incorrect: "Sai rồi!",
+                nominal: "Định danh",
+                ordinal: "Thứ bậc",
+                continuous: "Liên tục",
+                nominalDesc: "Phân loại không có thứ tự. Ví dụ: Giới tính, Nhóm máu.",
+                ordinalDesc: "Có thứ tự cao thấp/mức độ. Ví dụ: Xếp loại, Thang Likert.",
+                continuousDesc: "Dữ liệu số đo lường được. Ví dụ: Nhiệt độ, Chiều cao.",
+                challenge: "Thử thách: Phân Loại Thẻ",
+                compareTable: "So Sánh Đặc Điểm",
+                isGroups: "Phân nhóm?",
+                isOrder: "Có thứ tự?",
+                yes: "CÓ",
+                no: "KHÔNG",
+                select: "Chọn...",
+                surveyTitle: "Thiết Kế Khảo Sát",
+                surveySub: "Chủ đề: Đời sống học đường lớp 10",
+                q1Title: "Q1: Định danh",
+                q1Question: "Câu hỏi: Giới tính",
+                q2Title: "Q2: Thứ bậc",
+                q3Title: "Q3: Liên tục",
+                q2Placeholder: "Nhập câu hỏi (VD: Mức độ hài lòng...)",
+                q3Placeholder: "Nhập câu hỏi (VD: Chiều cao cm...)",
+                optionPlaceholder: "Lựa chọn",
+                addOption: "+ Thêm lựa chọn",
+                collectionTitle: "Thu Thập Dữ Liệu",
+                export: "Xuất CSV",
+                fillSample: "Điền mẫu",
+                analysisTitle: "Quy trình Phân tích trên JASP",
+                reportTitle: "Báo Cáo Tổng Kết",
+                reportSub: "Học sinh hoàn thiện báo cáo khoa học dựa trên kết quả JASP",
+                act1: "Hoạt động 1: Thống kê mô tả",
+                act2: "Hoạt động 2: Thống kê suy luận",
+                uploadChart: "Click để tải lên biểu đồ",
+                placeholderCaption: "VD: Hình 1. Biểu đồ...",
+                placeholderObs: "Nhận xét của bạn...",
+                relation: "Mối liên hệ/so sánh",
+                test: "Phép kiểm định",
+                testVal: "Giá trị kiểm định",
+                pVal: "Giá trị p",
+                conclusion: "Kết luận",
+                total: "TỔNG CỘNG",
+                sig: "Có sự khác biệt/liên hệ",
+                ns: "Không có ý nghĩa thống kê",
+                finalSummary: "Phân tích giới tính là bước đầu tiên quan trọng để hiểu sự khác biệt trong hành vi và đặc điểm tâm lý học đường.",
+                finalTitle: "KẾT LUẬN CUỐI CÙNG",
+                male: "Nam",
+                female: "Nữ",
+                gender: "Giới tính",
+                likert: "Thang Likert 1-5",
+                height: "Chiều cao",
+                brand: "Hãng điện thoại",
+                exam: "Điểm thi",
+                ranking: "Xếp loại học lực",
+                studyTime: "Thời gian học",
+                weight: "Cân nặng",
+                variable: "Biến số",
+                category: "Phân loại",
+                freq: "Tần suất (n)",
+                ratio: "Tỷ lệ (%)",
+                mean: "Mean (TB)",
+                sd: "SD (Độ lệch)",
+                min: "Min",
+                max: "Max",
+                descStats: "Thống kê Mô tả",
+                infStats: "Thống kê Suy luận"
+            },
+            en: {
+                appNamePrefix: "DATA TYPES IN",
+                appNameSuffix: "SCIENTIFIC RESEARCH",
+                steps: ["Warm-up", "Design", "Collection", "Analysis", "Summary"],
+                next: "Next",
+                prev: "Previous",
+                check: "Check Answer",
+                correct: "Correct!",
+                incorrect: "Incorrect!",
+                nominal: "Nominal",
+                ordinal: "Ordinal",
+                continuous: "Continuous",
+                nominalDesc: "Classification without order. E.g., Gender, Blood type.",
+                ordinalDesc: "Ordered levels/degree. E.g., Ranking, Likert scale.",
+                continuousDesc: "Measurable numerical data. E.g., Temperature, Height.",
+                challenge: "Challenge: Card Classification",
+                compareTable: "Feature Comparison",
+                isGroups: "Groupable?",
+                isOrder: "Ordered?",
+                yes: "YES",
+                no: "NO",
+                select: "Select...",
+                surveyTitle: "Survey Design",
+                surveySub: "Topic: Grade 10 School Life",
+                q1Title: "Q1: Nominal",
+                q1Question: "Question: Gender",
+                q2Title: "Q2: Ordinal",
+                q3Title: "Q3: Continuous",
+                q2Placeholder: "Enter question (e.g., Satisfaction level...)",
+                q3Placeholder: "Enter question (e.g., Height in cm...)",
+                optionPlaceholder: "Option",
+                addOption: "+ Add option",
+                collectionTitle: "Data Collection",
+                export: "Export CSV",
+                fillSample: "Auto-fill",
+                analysisTitle: "JASP Analysis Workflow",
+                reportTitle: "Summary Report",
+                reportSub: "Complete the scientific report based on JASP results",
+                act1: "Activity 1: Descriptive Statistics",
+                act2: "Activity 2: Inferential Statistics",
+                uploadChart: "Click to upload chart",
+                placeholderCaption: "E.g., Figure 1. Chart...",
+                placeholderObs: "Your observation...",
+                relation: "Relationship/Comparison",
+                test: "Statistical Test",
+                testVal: "Test Value",
+                pVal: "p-Value",
+                conclusion: "Conclusion",
+                total: "TOTAL",
+                sig: "Statistically Significant",
+                ns: "Not Significant",
+                finalSummary: "Gender analysis is a crucial first step in understanding behavioral and psychological differences in school environments.",
+                finalTitle: "FINAL CONCLUSION",
+                male: "Male",
+                female: "Female",
+                gender: "Gender",
+                likert: "Likert Scale 1-5",
+                height: "Height",
+                brand: "Phone Brand",
+                exam: "Exam Score",
+                ranking: "Academic Ranking",
+                studyTime: "Study Time",
+                weight: "Weight",
+                variable: "Variable",
+                category: "Category",
+                freq: "Frequency (n)",
+                ratio: "Ratio (%)",
+                mean: "Mean",
+                sd: "Std. Deviation",
+                min: "Min",
+                max: "Max",
+                descStats: "Descriptive Stats",
+                infStats: "Inferential Stats"
+            }
+        };
+
+        // --- ICON HELPER COMPONENT ---
+        const Icon = ({ name, className = "w-4 h-4" }) => {
+            const iconRef = useRef(null);
+            useEffect(() => {
+                if (window.lucide && iconRef.current) {
+                    const i = document.createElement('i');
+                    i.setAttribute('data-lucide', name);
+                    i.setAttribute('class', className);
+                    iconRef.current.innerHTML = '';
+                    iconRef.current.appendChild(i);
+                    window.lucide.createIcons({
+                        attrs: { class: className },
+                        nameAttr: 'data-lucide'
+                    });
+                }
+            }, [name, className]);
+            return <span ref={iconRef} className={`inline-flex items-center justify-center ${className}`} />;
+        };
+
+        // --- SHARED COMPONENTS ---
+        const Card = ({ children, className = "" }) => (
+            <div className={`bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden ${className}`}>
+                {children}
+            </div>
+        );
+
+        const Button = ({ children, onClick, disabled, variant = "primary", className = "" }) => {
+            const baseStyle = "px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-normal";
+            const variants = {
+                primary: "bg-blue-600 text-white hover:bg-blue-700 disabled:bg-slate-300",
+                secondary: "bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:bg-slate-50",
+                success: "bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-slate-300",
+                outline: "bg-white border-2 border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-slate-200 disabled:text-slate-400"
+            };
+            return (
+                <button onClick={onClick} disabled={disabled} className={`${baseStyle} ${variants[variant]} ${className}`}>
+                    {children}
+                </button>
+            );
+        };
+
+        const ImageUploadBox = ({ image, onImageChange, caption, onCaptionChange, t }) => {
+            const fileInputRef = useRef(null);
+            const handleFileChange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => onImageChange(reader.result);
+                    reader.readAsDataURL(file);
+                }
+            };
+            return (
+                <div className="space-y-2">
+                    <div onClick={() => fileInputRef.current.click()}
+                        className={`w-full aspect-video border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden bg-slate-50 relative group
+                        ${image ? 'border-emerald-500' : 'border-slate-300 hover:border-blue-400'}`}>
+                        {image ? <img src={image} alt="Uploaded chart" className="w-full h-full object-contain p-2" /> : (
+                            <div className="text-center p-4">
+                                <Icon name="upload" className="w-10 h-10 text-slate-300 mb-2 group-hover:text-blue-400" />
+                                <p className="text-small text-slate-400 group-hover:text-blue-500 font-medium">{t.uploadChart}</p>
+                            </div>
+                        )}
+                        <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleFileChange} />
+                    </div>
+                    <input type="text" placeholder={t.placeholderCaption}
+                        className="w-full p-2 border border-slate-200 rounded text-small text-center italic text-slate-500 outline-none focus:border-blue-300 bg-white"
+                        value={caption} onChange={(e) => onCaptionChange(e.target.value)} />
+                </div>
+            );
+        };
+
+        // --- TABS COMPONENTS ---
+
+        const WarmupTab = ({ onNext, t }) => {
+            const initialCardsData = useMemo(() => [
+                { id: 1, text: t.gender, type: "nominal" },
+                { id: 2, text: t.likert, type: "ordinal" },
+                { id: 3, text: t.height, type: "continuous" },
+                { id: 4, text: t.brand, type: "nominal" },
+                { id: 5, text: t.exam, type: "continuous" },
+                { id: 6, text: t.ranking, type: "ordinal" },
+                { id: 7, text: t.studyTime, type: "continuous" },
+                { id: 8, text: t.weight, type: "continuous" }
+            ], [t]);
+
+            const [cards, setCards] = useState([]);
+            const [activeCard, setActiveCard] = useState(null);
+            const [tableAnswers, setTableAnswers] = useState({
+                phanLoai: { nominal: "", ordinal: "", continuous: "" },
+                thuTu: { nominal: "", ordinal: "", continuous: "" }
+            });
+            const [tableFeedback, setTableFeedback] = useState(null);
+
+            useEffect(() => {
+                setCards(initialCardsData.map(c => ({ ...c, status: null })));
+                setActiveCard(null);
+                setTableAnswers({
+                    phanLoai: { nominal: "", ordinal: "", continuous: "" },
+                    thuTu: { nominal: "", ordinal: "", continuous: "" }
+                });
+                setTableFeedback(null);
+            }, [initialCardsData]);
+
+            const correctTable = {
+                phanLoai: { nominal: "yes", ordinal: "yes", continuous: "yes" },
+                thuTu: { nominal: "no", ordinal: "yes", continuous: "yes" }
+            };
+
+            const handleCheckTable = () => {
+                const isCorrect =
+                    tableAnswers.phanLoai.nominal === correctTable.phanLoai.nominal &&
+                    tableAnswers.phanLoai.ordinal === correctTable.phanLoai.ordinal &&
+                    tableAnswers.phanLoai.continuous === correctTable.phanLoai.continuous &&
+                    tableAnswers.thuTu.nominal === correctTable.thuTu.nominal &&
+                    tableAnswers.thuTu.ordinal === correctTable.thuTu.ordinal &&
+                    tableAnswers.thuTu.continuous === correctTable.thuTu.continuous;
+                setTableFeedback(isCorrect ? 'correct' : 'incorrect');
+            };
+
+            const handleClassify = (type) => {
+                if (!activeCard) return;
+                setCards(cards.map(c => c.id === activeCard.id ? { ...c, status: c.type === type ? 'correct' : 'incorrect' } : c));
+                setActiveCard(null);
+            };
+
+            const isAllCardsCorrect = cards.length > 0 && cards.every(c => c.status === 'correct');
+
+            return (
+                <div className="space-y-8 animate-fadeIn text-normal">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="p-5 bg-white rounded-xl border-l-4 border-blue-500 shadow-sm">
+                            <h3 className="font-bold text-blue-700 flex items-center gap-2 mb-2"><Icon name="tag"/> {t.nominal}</h3>
+                            <p className="text-slate-600 leading-relaxed text-normal">{t.nominalDesc}</p>
+                        </div>
+                        <div className="p-5 bg-white rounded-xl border-l-4 border-indigo-500 shadow-sm">
+                            <h3 className="font-bold text-indigo-700 flex items-center gap-2 mb-2"><Icon name="list-ordered"/> {t.ordinal}</h3>
+                            <p className="text-slate-600 leading-relaxed text-normal">{t.ordinalDesc}</p>
+                        </div>
+                        <div className="p-5 bg-white rounded-xl border-l-4 border-emerald-500 shadow-sm">
+                            <h3 className="font-bold text-emerald-700 flex items-center gap-2 mb-2"><Icon name="ruler"/> {t.continuous}</h3>
+                            <p className="text-slate-600 leading-relaxed text-normal">{t.continuousDesc}</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 shadow-inner">
+                        <h2 className="font-bold text-blue-800 mb-4 flex items-center gap-2 text-normal">
+                            <Icon name="info" className="w-6 h-6" /> {t.challenge}
+                        </h2>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {cards.map(card => (
+                                <div key={card.id} onClick={() => card.status !== 'correct' && setActiveCard(card)}
+                                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all min-h-[100px] flex items-center justify-center text-center font-medium relative text-normal
+                                    ${card.status === 'correct' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 cursor-default' :
+                                    card.status === 'incorrect' ? 'bg-red-50 border-red-500 text-red-700' :
+                                    activeCard?.id === card.id ? 'bg-white border-blue-500 shadow-md ring-2 ring-blue-200 scale-105' : 'bg-white border-slate-200 hover:border-blue-400'}`}>
+                                    {card.text}
+                                    {card.status === 'correct' && <Icon name="check-circle-2" className="absolute top-2 right-2 w-5 h-5 text-emerald-500" />}
+                                    {card.status === 'incorrect' && <Icon name="x-circle" className="absolute top-2 right-2 w-5 h-5 text-red-500" />}
+                                </div>
+                            ))}
+                        </div>
+                        {activeCard && (
+                            <div className="mt-6 p-5 bg-white rounded-xl shadow-lg border border-blue-200 text-center animate-slideUp">
+                                <p className="font-bold text-blue-600 text-normal mb-4">"{activeCard.text}"</p>
+                                <div className="flex justify-center flex-wrap gap-4">
+                                    <Button onClick={() => handleClassify('nominal')} variant="secondary" className="border border-slate-300">🏷️ {t.nominal}</Button>
+                                    <Button onClick={() => handleClassify('ordinal')} variant="secondary" className="border border-slate-300">📈 {t.ordinal}</Button>
+                                    <Button onClick={() => handleClassify('continuous')} variant="secondary" className="border border-slate-300">📏 {t.continuous}</Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 className="font-bold text-slate-800 mb-4 text-normal">{t.compareTable}</h3>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50">
+                                        <th className="p-3 border border-slate-200 text-normal">Feature</th>
+                                        <th className="p-3 border border-slate-200 text-center text-normal">{t.nominal}</th>
+                                        <th className="p-3 border border-slate-200 text-center text-normal">{t.ordinal}</th>
+                                        <th className="p-3 border border-slate-200 text-center text-normal">{t.continuous}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td className="p-3 border border-slate-200 font-medium text-normal">{t.isGroups}</td>
+                                        {['nominal', 'ordinal', 'continuous'].map(type => (
+                                            <td key={type} className="p-3 border border-slate-200">
+                                                <select className="p-2 rounded border w-full text-normal bg-slate-50" value={tableAnswers.phanLoai[type]} onChange={(e) => { setTableAnswers({...tableAnswers, phanLoai: {...tableAnswers.phanLoai, [type]: e.target.value}}); setTableFeedback(null); }}>
+                                                    <option value="">--</option><option value="yes">{t.yes}</option><option value="no">{t.no}</option>
+                                                </select>
+                                            </td>
+                                        ))}
+                                    </tr>
+                                    <tr>
+                                        <td className="p-3 border border-slate-200 font-medium text-normal">{t.isOrder}</td>
+                                        {['nominal', 'ordinal', 'continuous'].map(type => (
+                                            <td key={type} className="p-3 border border-slate-200">
+                                                <select className="p-2 rounded border w-full text-normal bg-slate-50" value={tableAnswers.thuTu[type]} onChange={(e) => { setTableAnswers({...tableAnswers, thuTu: {...tableAnswers.thuTu, [type]: e.target.value}}); setTableFeedback(null); }}>
+                                                    <option value="">--</option><option value="yes">{t.yes}</option><option value="no">{t.no}</option>
+                                                </select>
+                                            </td>
+                                        ))}
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="mt-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                <Button onClick={handleCheckTable} variant="outline">{t.check}</Button>
+                                {tableFeedback === 'correct' && <span className="text-emerald-600 font-bold flex items-center gap-1 text-normal"><Icon name="check-circle-2"/> {t.correct}</span>}
+                                {tableFeedback === 'incorrect' && <span className="text-red-600 font-bold flex items-center gap-1 text-normal"><Icon name="x-circle"/> {t.incorrect}</span>}
+                            </div>
+                            <Button onClick={() => onNext(2)} disabled={!isAllCardsCorrect || tableFeedback !== 'correct'} variant="success">{t.next} <Icon name="arrow-right"/></Button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const SurveyTab = ({ survey, setSurvey, onNext, t }) => {
+            const handleUpdate = (type, field, value, index = null) => {
+                const newData = { ...survey };
+                if (index !== null) newData[type].options[index] = value;
+                else newData[type][field] = value;
+                setSurvey(newData);
+            };
+            const addOption = (type) => {
+                if (survey[type].options.length < 5) {
+                    setSurvey({ ...survey, [type]: { ...survey[type], options: [...survey[type].options, ""] } });
+                }
+            };
+            return (
+                <div className="space-y-6 animate-fadeIn text-normal">
+                    <div className="flex items-center gap-3 mb-2">
+                        <Icon name="settings" className="w-8 h-8 text-indigo-600" />
+                        <div><h2 className="font-bold text-slate-800 text-normal">{t.surveyTitle}</h2><p className="text-slate-500 text-small uppercase tracking-wide">{t.surveySub}</p></div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <Card className="p-5 border-t-4 border-t-blue-500 bg-blue-50/30">
+                            <div className="flex items-center gap-2 mb-4 text-blue-700"><Icon name="user-circle"/> <h3 className="font-bold">{t.q1Title}</h3></div>
+                            <div className="p-3 bg-white rounded-lg border border-blue-100 shadow-sm space-y-3">
+                                <p className="font-bold text-slate-700">{t.q1Question}</p>
+                                <div className="flex gap-2">
+                                    <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-small font-bold uppercase">{t.male}</span>
+                                    <span className="px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-small font-bold uppercase">{t.female}</span>
+                                </div>
+                            </div>
+                        </Card>
+                        <Card className="p-5 border-t-4 border-t-indigo-500">
+                            <div className="flex items-center gap-2 mb-4 text-indigo-700"><Icon name="arrow-down-narrow-wide"/> <h3 className="font-bold">{t.q2Title}</h3></div>
+                            <input type="text" placeholder={t.q2Placeholder} className="w-full p-2 border rounded-lg mb-4 outline-none text-normal" value={survey.ordinal.question} onChange={(e) => handleUpdate('ordinal', 'question', e.target.value)} />
+                            <div className="space-y-2">
+                                {survey.ordinal.options.map((opt, i) => (
+                                    <input key={i} type="text" placeholder={`${t.optionPlaceholder} ${i+1}`} className="w-full p-2 border rounded text-normal outline-none" value={opt} onChange={(e) => handleUpdate('ordinal', 'options', e.target.value, i)}/>
+                                ))}
+                            </div>
+                            <button onClick={() => addOption('ordinal')} className="mt-2 text-small text-indigo-600 font-bold uppercase tracking-wider">{t.addOption}</button>
+                        </Card>
+                        <Card className="p-5 border-t-4 border-t-emerald-500">
+                            <div className="flex items-center gap-2 mb-4 text-emerald-700"><Icon name="ruler"/> <h3 className="font-bold">{t.q3Title}</h3></div>
+                            <input type="text" placeholder={t.q3Placeholder} className="w-full p-2 border rounded-lg mb-4 text-normal outline-none" value={survey.continuous.question} onChange={(e) => handleUpdate('continuous', 'question', e.target.value)} />
+                        </Card>
+                    </div>
+                    <div className="flex justify-end pt-4 border-t"><Button onClick={() => onNext(3)} variant="primary">{t.next} <Icon name="arrow-right"/></Button></div>
+                </div>
+            );
+        };
+
+        const DataCollectionTab = ({ survey, responses, setResponses, onNext, t }) => {
+            // Gender options always follow current language
+            const genderOptions = [t.male, t.female];
+
+            const handleUpdate = (idx, key, val) => {
+                const newR = [...responses];
+                newR[idx] = { ...newR[idx], [key]: val };
+                setResponses(newR);
+            };
+            const autoFill = () => {
+                setResponses(responses.map(() => ({
+                    r1: genderOptions[Math.floor(Math.random() * genderOptions.length)],
+                    r2: survey.ordinal.options.filter(o => o.trim())[Math.floor(Math.random() * Math.max(1, survey.ordinal.options.filter(o => o.trim()).length))] || "",
+                    r3: (Math.random() * (10 - 5) + 5).toFixed(1)
+                })));
+            };
+            const handleExportCSV = () => {
+                let csvContent = "ID,Gender," + (survey.ordinal.question || "Q2") + "," + (survey.continuous.question || "Q3") + "\n";
+                responses.forEach((res, i) => { csvContent += `${i+1},${res.r1},${res.r2},${res.r3}\n`; });
+                const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url); link.setAttribute("download", "data.csv");
+                document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            };
+            const isComplete = responses.every(r => r.r1 && r.r2 && r.r3);
+            return (
+                <Card className="p-6 animate-fadeIn text-normal">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                        <div><h2 className="font-bold text-slate-800 flex items-center gap-2 text-normal"><Icon name="users" className="text-fuchsia-600"/> {t.collectionTitle}</h2></div>
+                        <div className="flex gap-2">
+                            <button onClick={handleExportCSV} className="text-small bg-emerald-100 text-emerald-700 px-3 py-2 rounded font-bold transition-all flex items-center gap-2 uppercase tracking-tighter"><Icon name="file-spreadsheet"/> {t.export}</button>
+                            <button onClick={autoFill} className="text-small bg-slate-100 px-3 py-2 rounded font-bold text-slate-600 uppercase tracking-tighter">{t.fillSample}</button>
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr className="bg-slate-50 text-small uppercase font-bold text-slate-500">
+                                    <th className="p-3 border w-12 text-center">ID</th>
+                                    <th className="p-3 border text-left bg-blue-50/50 text-blue-700">Q1: {t.nominal}</th>
+                                    <th className="p-3 border text-left">Q2: {survey.ordinal.question || t.ordinal}</th>
+                                    <th className="p-3 border text-left">Q3: {survey.continuous.question || t.continuous}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {responses.map((res, i) => (
+                                    <tr key={i}>
+                                        <td className="p-2 border text-center font-bold text-slate-300 text-normal">{i+1}</td>
+                                        <td className="p-2 border text-normal">
+                                            <select className="w-full text-normal outline-none bg-transparent" value={res.r1} onChange={(e) => handleUpdate(i, 'r1', e.target.value)}>
+                                                <option value="">{t.select}</option>
+                                                {genderOptions.map((o, j) => <option key={j} value={o}>{o}</option>)}
+                                            </select>
+                                        </td>
+                                        <td className="p-2 border text-normal">
+                                            <select className="w-full text-normal outline-none bg-transparent" value={res.r2} onChange={(e) => handleUpdate(i, 'r2', e.target.value)}>
+                                                <option value="">{t.select}</option>
+                                                {survey.ordinal.options.filter(o => o.trim()).map((o, j) => <option key={j} value={o}>{o}</option>)}
+                                            </select>
+                                        </td>
+                                        <td className="p-2 border text-normal"><input type="number" className="w-full text-normal outline-none bg-transparent" value={res.r3} onChange={(e) => handleUpdate(i, 'r3', e.target.value)} /></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="mt-6 flex justify-end"><Button onClick={() => onNext(4)} disabled={!isComplete}>{t.next} <Icon name="arrow-right"/></Button></div>
+                </Card>
+            );
+        };
+
+        const AnalysisTab = ({ onNext, t }) => {
+            const workflow = {
+                vi: {
+                    nominal: {
+                        title: "1. Dữ liệu Định danh (Ví dụ: Giới tính)",
+                        desc: [
+                            "Mục **Descriptives** → Kéo biến vào **Variables**.",
+                            "Mục **Statistics**: Tích **Mode** (Yếu vị). Bỏ chọn Mean/SD.",
+                            "Tích chọn **Frequency tables** (Bảng tần suất).",
+                            "Mục **Plots**: Chọn **Pie charts** hoặc **Bar charts**."
+                        ],
+                        inf: [
+                            "(Kiểm tra mối liên hệ giữa 2 biến định danh)",
+                            "Mục **Frequencies** → **Contingency Tables**.",
+                            "Kéo biến 1 vào **Rows**, biến 2 vào **Columns**.",
+                            "Mục **Statistics**: Đảm bảo tích **Chi-square**.",
+                            "Đọc giá trị **p** (nếu p < 0.05: có mối liên hệ)."
+                        ]
+                    },
+                    ordinal: {
+                        title: "2. Dữ liệu Thứ bậc (Ví dụ: Q2 - Mức độ)",
+                        desc: [
+                            "Mục **Descriptives** → Kéo biến vào **Variables**.",
+                            "Mục **Statistics**: Tích **Median** (Trung vị) và **Mode**.",
+                            "Tích chọn **Frequency tables**.",
+                            "Mục **Plots**: Chọn **Distribution plots**."
+                        ],
+                        inf: [
+                            "(So sánh thứ bậc giữa 2 nhóm, VD: Nam vs Nữ)",
+                            "Mục **T-Tests** → **Independent Samples T-Test**.",
+                            "Kéo biến Thứ bậc vào **Variables**, Giới tính vào **Grouping Variable**.",
+                            "Mục **Tests**: Tích chọn **Mann-Whitney U** (Phi tham số).",
+                            "Đọc giá trị **p** để kết luận sự khác biệt."
+                        ]
+                    },
+                    continuous: {
+                        title: "3. Dữ liệu Liên tục (Ví dụ: Q3 - Chiều cao, Điểm số)",
+                        desc: [
+                            "Mục **Descriptives** → Kéo biến vào **Variables**.",
+                            "Mục **Statistics**: Tích **Mean** (Trung bình), **Std. Deviation** (Độ lệch chuẩn), **Min/Max**.",
+                            "Mục **Plots**: Chọn **Boxplots** và **Histogram**."
+                        ],
+                        inf: [
+                            "(So sánh điểm trung bình giữa 2 nhóm)",
+                            "Mục **T-Tests** → **Independent Samples T-Test**.",
+                            "Kéo biến Liên tục vào **Variables**, Giới tính vào **Grouping Variable**.",
+                            "Mục **Tests**: Tích chọn **Student** (nếu phương sai bằng nhau).",
+                            "Đọc **p** và **Mean Difference**."
+                        ]
+                    }
+                },
+                en: {
+                    nominal: {
+                        title: "1. Nominal Data (e.g., Gender)",
+                        desc: [
+                            "Menu **Descriptives** → Drag variable to **Variables**.",
+                            "**Statistics**: Check **Mode**. Uncheck Mean/SD.",
+                            "Check **Frequency tables**.",
+                            "**Plots**: Select **Pie charts** or **Bar charts**."
+                        ],
+                        inf: [
+                            "(Checking relationship between 2 nominal variables)",
+                            "Menu **Frequencies** → **Contingency Tables**.",
+                            "Drag Var 1 to **Rows**, Var 2 to **Columns**.",
+                            "**Statistics**: Ensure **Chi-square** is checked.",
+                            "Read **p**-value (if p < 0.05: relationship exists)."
+                        ]
+                    },
+                    ordinal: {
+                        title: "2. Ordinal Data (e.g., Q2 - Level)",
+                        desc: [
+                            "Menu **Descriptives** → Drag variable to **Variables**.",
+                            "**Statistics**: Check **Median** and **Mode**.",
+                            "Check **Frequency tables**.",
+                            "**Plots**: Select **Distribution plots**."
+                        ],
+                        inf: [
+                            "(Comparing levels between 2 groups, e.g., Male vs Female)",
+                            "Menu **T-Tests** → **Independent Samples T-Test**.",
+                            "Drag Ordinal var to **Variables**, Gender to **Grouping Variable**.",
+                            "**Tests**: Select **Mann-Whitney U** (Non-parametric).",
+                            "Read **p**-value to conclude the difference."
+                        ]
+                    },
+                    continuous: {
+                        title: "3. Continuous Data (e.g., Q3 - Height, Score)",
+                        desc: [
+                            "Menu **Descriptives** → Drag variable to **Variables**.",
+                            "**Statistics**: Check **Mean**, **Std. Deviation**, **Min/Max**.",
+                            "**Plots**: Select **Boxplots** and **Histogram**."
+                        ],
+                        inf: [
+                            "(Comparing means between 2 groups)",
+                            "Menu **T-Tests** → **Independent Samples T-Test**.",
+                            "Drag Continuous var to **Variables**, Gender to **Grouping Variable**.",
+                            "**Tests**: Select **Student** (if variances are equal).",
+                            "Read **p** and **Mean Difference**."
+                        ]
+                    }
+                }
+            };
+
+            const lang = t.male === "Nam" ? 'vi' : 'en';
+            const data = workflow[lang];
+
+            const formatText = (txt) => {
+                const parts = txt.split(/(\*\*.*?\*\*)/g);
+                return parts.map((part, i) => part.startsWith('**') ? <b key={i} className="text-slate-800 font-bold">{part.slice(2, -2)}</b> : part);
+            };
+
+            return (
+                <div className="space-y-6 animate-fadeIn">
+                    <Card className="p-6 border-l-4 border-l-purple-500">
+                        <div className="flex items-center gap-3 mb-6 border-b pb-4">
+                            <Icon name="settings" className="w-8 h-8 text-purple-600"/>
+                            <h2 className="font-black text-slate-800 uppercase tracking-tight text-normal">{t.analysisTitle}</h2>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-10">
+                            {/* LOẠI 1: NOMINAL */}
+                            <div className="space-y-4">
+                                <h3 className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 inline-flex text-small uppercase tracking-wider">
+                                    <Icon name="tag" className="w-5 h-5"/> {data.nominal.title}
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="p-5 bg-blue-50/50 rounded-xl border border-blue-100">
+                                        <p className="font-bold text-blue-800 mb-3 flex items-center gap-2 text-normal"><Icon name="bar-chart-3" className="w-4 h-4"/> {t.descStats}</p>
+                                        <div className="space-y-3 text-slate-600 text-normal">
+                                            {data.nominal.desc.map((step, i) => (
+                                                <div key={i} className="jasp-step">{formatText(step)}</div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="p-5 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                                        <p className="font-bold text-indigo-800 mb-3 flex items-center gap-2 text-normal"><Icon name="zap" className="w-4 h-4"/> {t.infStats}</p>
+                                        <div className="space-y-3 text-slate-600 text-normal">
+                                            {data.nominal.inf.map((step, i) => (
+                                                <div key={i} className={`jasp-step ${i === 0 ? 'italic text-slate-400 mb-2' : ''}`}>{formatText(step)}</div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* LOẠI 2: ORDINAL */}
+                            <div className="space-y-4">
+                                <h3 className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 inline-flex text-small uppercase tracking-wider">
+                                    <Icon name="list-ordered" className="w-5 h-5"/> {data.ordinal.title}
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="p-5 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                                        <p className="font-bold text-indigo-800 mb-3 flex items-center gap-2 text-normal"><Icon name="bar-chart-3" className="w-4 h-4"/> {t.descStats}</p>
+                                        <div className="space-y-3 text-slate-600 text-normal">
+                                            {data.ordinal.desc.map((step, i) => (
+                                                <div key={i} className="jasp-step">{formatText(step)}</div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="p-5 bg-violet-50/50 rounded-xl border border-violet-100">
+                                        <p className="font-bold text-violet-800 mb-3 flex items-center gap-2 text-normal"><Icon name="zap" className="w-4 h-4"/> {t.infStats}</p>
+                                        <div className="space-y-3 text-slate-600 text-normal">
+                                            {data.ordinal.inf.map((step, i) => (
+                                                <div key={i} className={`jasp-step ${i === 0 ? 'italic text-slate-400 mb-2' : ''}`}>{formatText(step)}</div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* LOẠI 3: CONTINUOUS */}
+                            <div className="space-y-4">
+                                <h3 className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 inline-flex text-small uppercase tracking-wider">
+                                    <Icon name="ruler" className="w-5 h-5"/> {data.continuous.title}
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="p-5 bg-emerald-50/50 rounded-xl border border-emerald-100">
+                                        <p className="font-bold text-emerald-800 mb-3 flex items-center gap-2 text-normal"><Icon name="bar-chart-3" className="w-4 h-4"/> {t.descStats}</p>
+                                        <div className="space-y-3 text-slate-600 text-normal">
+                                            {data.continuous.desc.map((step, i) => (
+                                                <div key={i} className="jasp-step">{formatText(step)}</div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="p-5 bg-teal-50/50 rounded-xl border border-teal-100">
+                                        <p className="font-bold text-teal-800 mb-3 flex items-center gap-2 text-normal"><Icon name="zap" className="w-4 h-4"/> {t.infStats}</p>
+                                        <div className="space-y-3 text-slate-600 text-normal">
+                                            {data.continuous.inf.map((step, i) => (
+                                                <div key={i} className={`jasp-step ${i === 0 ? 'italic text-slate-400 mb-2' : ''}`}>{formatText(step)}</div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                    <div className="flex justify-end pt-4"><Button onClick={() => onNext(5)}>{t.next} <Icon name="arrow-right"/></Button></div>
+                </div>
+            );
+        };
+
+        const ScientificDataTable = ({ data, onDataChange, type = 'categorical', t }) => {
+            if (type === 'continuous') {
+                return (
+                    <div className="overflow-hidden border border-slate-200 rounded-lg bg-white">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-slate-50 text-small font-bold text-slate-600 uppercase">
+                                <tr>
+                                    <th className="p-2 border-b border-r border-slate-200">{t.variable}</th>
+                                    <th className="p-2 border-b border-r border-slate-200 text-center">{t.mean}</th>
+                                    <th className="p-2 border-b border-r border-slate-200 text-center">{t.sd}</th>
+                                    <th className="p-2 border-b border-r border-slate-200 text-center">{t.min}</th>
+                                    <th className="p-2 border-b border-slate-200 text-center">{t.max}</th>
+                                </tr>
+                            </thead>
+                            <tbody className="text-normal">
+                                <tr>
+                                    <td className="p-1 border-r border-slate-200 italic"><input className="w-full p-1 outline-none text-normal" placeholder="..." value={data[0]?.variable || ""} onChange={(e)=>onDataChange(0,'variable',e.target.value)} /></td>
+                                    <td className="p-1 border-r border-slate-200 text-center font-mono"><input className="w-full text-center outline-none bg-transparent" value={data[0]?.mean || ""} onChange={(e)=>onDataChange(0,'mean',e.target.value)} /></td>
+                                    <td className="p-1 border-r border-slate-200 text-center font-mono"><input className="w-full text-center outline-none bg-transparent" value={data[0]?.sd || ""} onChange={(e)=>onDataChange(0,'sd',e.target.value)} /></td>
+                                    <td className="p-1 border-r border-slate-200 text-center font-mono"><input className="w-full text-center outline-none bg-transparent" value={data[0]?.min || ""} onChange={(e)=>onDataChange(0,'min',e.target.value)} /></td>
+                                    <td className="p-1 text-center font-mono"><input className="w-full text-center outline-none bg-transparent" value={data[0]?.max || ""} onChange={(e)=>onDataChange(0,'max',e.target.value)} /></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                );
+            }
+            const totalN = data.reduce((sum, row) => sum + (parseInt(row.n) || 0), 0);
+            const totalPercent = data.reduce((sum, row) => sum + (parseFloat(row.percent) || 0), 0);
+            return (
+                <div className="overflow-hidden border border-slate-200 rounded-lg bg-white">
+                    <table className="w-full text-left border-collapse">
+                        <thead className="bg-slate-50 text-small font-bold text-slate-600 uppercase">
+                            <tr>
+                                <th className="p-2 border-b border-r border-slate-200">{t.variable}</th>
+                                <th className="p-2 border-b border-r border-slate-200">{t.category}</th>
+                                <th className="p-2 border-b border-r border-slate-200 text-center">{t.freq}</th>
+                                <th className="p-2 border-b border-slate-200 text-center">{t.ratio}</th>
+                            </tr>
+                        </thead>
+                        <tbody className="text-normal">
+                            {data.map((row, i) => (
+                                <tr key={i} className="border-b border-slate-100 last:border-0">
+                                    <td className="p-1 border-r border-slate-200 italic"><input className="w-full p-1 outline-none text-normal" placeholder="..." value={row.variable || ""} onChange={(e)=>onDataChange(i,'variable',e.target.value)} /></td>
+                                    <td className="p-1 border-r border-slate-200 text-normal"><input className="w-full p-1 outline-none bg-transparent" placeholder="..." value={row.category || ""} onChange={(e)=>onDataChange(i,'category',e.target.value)} /></td>
+                                    <td className="p-1 border-r border-slate-200 text-center font-mono"><input className="w-full text-center outline-none bg-transparent" value={row.n || ""} onChange={(e)=>onDataChange(i,'n',e.target.value)} /></td>
+                                    <td className="p-1 text-center font-mono"><input className="w-full text-center outline-none bg-transparent" value={row.percent || ""} onChange={(e)=>onDataChange(i,'percent',e.target.value)} /></td>
+                                </tr>
+                            ))}
+                            <tr className="bg-slate-50 font-bold border-t-2">
+                                <td colSpan="2" className="p-2 border-r border-slate-200 text-small uppercase tracking-tighter">{t.total}</td>
+                                <td className="p-2 border-r border-slate-200 text-center text-blue-600 font-mono">{totalN}</td>
+                                <td className="p-2 text-center text-blue-600 font-mono">{totalPercent}%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            );
+        };
+
+        const ClosureTab = ({ t }) => {
+            const [report, setReport] = useState({
+                descNominal: { rows: [{variable: t.gender, category: t.male, n: "", percent: ""}, {variable: "", category: t.female, n: "", percent: ""}], image: null, caption: "", obs: "" },
+                descOrdinal: { rows: [{variable: t.ordinal + " (Q2)", category: "", n: "", percent: ""}, {variable: "", category: "", n: "", percent: ""}, {variable: "", category: "", n: "", percent: ""}], image: null, caption: "", obs: "" },
+                descContinuous: { rows: [{variable: t.continuous + " (Q3)", mean: "", sd: "", min: "", max: ""}], image: null, caption: "", obs: "" },
+                infStats: [
+                    { relation: `${t.gender} * Q2`, test: "Chi-Square / Mann-Whitney", val: "", p: "", result: "" },
+                    { relation: `${t.gender} * Q3`, test: "Independent T-Test", val: "", p: "", result: "" }
+                ]
+            });
+
+            useEffect(() => {
+                setReport(prev => ({
+                    ...prev,
+                    descNominal: {
+                        ...prev.descNominal,
+                        rows: [
+                            {...prev.descNominal.rows[0], variable: t.gender, category: t.male},
+                            {...prev.descNominal.rows[1], category: t.female}
+                        ]
+                    },
+                    descOrdinal: {
+                        ...prev.descOrdinal,
+                        rows: prev.descOrdinal.rows.map((r, i) => i === 0 ? {...r, variable: t.ordinal + " (Q2)"} : r)
+                    },
+                    descContinuous: {
+                        ...prev.descContinuous,
+                        rows: prev.descContinuous.rows.map((r, i) => i === 0 ? {...r, variable: t.continuous + " (Q3)"} : r)
+                    },
+                    infStats: prev.infStats.map((item, idx) => ({
+                        ...item,
+                        relation: idx === 0 ? `${t.gender} * Q2` : `${t.gender} * Q3`
+                    }))
+                }));
+            }, [t]);
+
+            const updateSection = (sec, field, v) => setReport(prev => ({ ...prev, [sec]: { ...prev[sec], [field]: v } }));
+            const updateRow = (sec, idx, f, v) => {
+                const newRows = [...report[sec].rows];
+                newRows[idx] = {...newRows[idx], [f]: v};
+                updateSection(sec, 'rows', newRows);
+            };
+            const updateInfRow = (idx, f, v) => {
+                const newInf = [...report.infStats];
+                newInf[idx] = { ...newInf[idx], [f]: v };
+                setReport({ ...report, infStats: newInf });
+            };
+
+            return (
+                <div className="space-y-12 pb-24 animate-fadeIn text-normal">
+                    <div className="text-center">
+                        <h2 className="font-black text-slate-800 uppercase tracking-tight flex items-center justify-center gap-3 text-normal">{t.reportTitle}</h2>
+                        <p className="text-slate-400 mt-2 italic text-small">{t.reportSub}</p>
+                    </div>
+
+                    <section className="space-y-10">
+                        <h3 className="font-bold text-slate-700 flex items-center gap-2 border-b border-slate-200 pb-2 text-normal"><Icon name="bar-chart-3" className="text-blue-600" /> {t.act1}</h3>
+
+                        <div className="space-y-16">
+                            {['descNominal', 'descOrdinal', 'descContinuous'].map((key, i) => (
+                                <div key={key} className="space-y-4">
+                                    <h4 className="font-bold text-slate-800 text-normal flex items-center gap-2 capitalize border-l-4 border-blue-500 pl-3 py-1 bg-blue-50/30">
+                                        <Icon name={i === 0 ? "tag" : i === 1 ? "list-ordered" : "ruler"} className="w-4 h-4" />
+                                        {i === 0 ? t.nominal : i === 1 ? t.ordinal : t.continuous}
+                                    </h4>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                                        <div className="space-y-3">
+                                            <ImageUploadBox t={t} image={report[key].image} onImageChange={(img) => updateSection(key, 'image', img)} caption={report[key].caption} onCaptionChange={(txt) => updateSection(key, 'caption', txt)} />
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <ScientificDataTable t={t} type={key === 'descContinuous' ? 'continuous' : 'categorical'} data={report[key].rows} onDataChange={(i,f,v)=>updateRow(key,i,f,v)} />
+                                            <textarea className="w-full p-3 border border-slate-200 rounded-lg text-normal min-h-[120px] bg-white outline-none focus:border-blue-300 shadow-sm" placeholder={t.placeholderObs} value={report[key].obs} onChange={(e)=>updateSection(key, 'obs', e.target.value)} />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+
+                    <section className="space-y-6">
+                        <h3 className="font-bold text-slate-700 flex items-center gap-2 border-b border-slate-200 pb-2 text-normal"><Icon name="zap" className="text-amber-500" /> {t.act2}</h3>
+                        <div className="overflow-hidden border border-slate-200 rounded-xl bg-white shadow-sm">
+                            <table className="w-full border-collapse text-normal">
+                                <thead className="bg-slate-800 text-white uppercase font-bold text-small">
+                                    <tr>
+                                        <th className="p-3 text-left w-1/4">{t.relation}</th>
+                                        <th className="p-3 text-left w-1/4">{t.test}</th>
+                                        <th className="p-3 text-center">{t.testVal}</th>
+                                        <th className="p-3 text-center">{t.pVal}</th>
+                                        <th className="p-3 text-left">{t.conclusion}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {report.infStats.map((item, idx) => (
+                                        <tr key={idx} className="border-b hover:bg-slate-50 transition-colors">
+                                            <td className="p-3 italic text-blue-700 font-medium text-normal">{item.relation}</td>
+                                            <td className="p-3 text-slate-500 text-normal">{item.test}</td>
+                                            <td className="p-3 text-center font-mono text-normal"><input className="w-full text-center outline-none bg-transparent" placeholder="Value" value={item.val} onChange={(e) => updateInfRow(idx, 'val', e.target.value)} /></td>
+                                            <td className="p-3 text-center font-mono text-normal"><input className="w-full text-center outline-none bg-transparent" placeholder="p" value={item.p} onChange={(e) => updateInfRow(idx, 'p', e.target.value)} /></td>
+                                            <td className="p-3 text-normal">
+                                                <select className="w-full outline-none bg-transparent cursor-pointer" value={item.result} onChange={(e) => updateInfRow(idx, 'result', e.target.value)}>
+                                                    <option value="">{t.select}</option>
+                                                    <option value="sig">{t.sig}</option>
+                                                    <option value="ns">{t.ns}</option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section className="p-8 bg-slate-900 text-white rounded-2xl text-center relative overflow-hidden">
+                        <div className="relative z-10 space-y-2">
+                            <h4 className="font-bold text-amber-400 italic uppercase text-normal">{t.finalTitle}</h4>
+                            <p className="max-w-2xl mx-auto text-normal">{t.finalSummary}</p>
+                        </div>
+                        <Icon name="lightbulb" className="absolute top-0 right-0 w-32 h-32 opacity-5 text-amber-400 translate-x-10 -translate-y-10" />
+                    </section>
+                </div>
+            );
+        };
+
+        function App() {
+            const [lang, setLang] = useState('vi');
+            const [activeStep, setActiveStep] = useState(1);
+            const t = translations[lang];
+
+            const [survey, setSurvey] = useState({
+                nominal: { question: "Giới tính", options: ["Nam", "Nữ"] },
+                ordinal: { question: "", options: ["", "", ""] },
+                continuous: { question: "" }
+            });
+            const [responses, setResponses] = useState(Array.from({ length: 10 }, () => ({ r1: "", r2: "", r3: "" })));
+
+            // Keep gender labels in sync when language changes
+            useEffect(() => {
+                setSurvey(prev => ({
+                    ...prev,
+                    nominal: {
+                        question: t.q1Question.replace(/^Câu hỏi:\s*|^Question:\s*/i, '') || t.gender,
+                        options: [t.male, t.female]
+                    }
+                }));
+            }, [lang, t.male, t.female, t.gender, t.q1Question]);
+
+            return (
+                <div className="max-w-6xl mx-auto p-4 md:p-8 relative">
+                    <div className="absolute top-4 right-4 z-50">
+                        <button
+                            onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')}
+                            className="bg-white border-2 border-slate-200 px-3 py-1 rounded-full shadow-sm hover:border-blue-500 transition-colors flex items-center gap-2 text-small font-bold text-slate-700 uppercase"
+                        >
+                            <Icon name="languages" className="w-4 h-4 text-blue-500" />
+                            {lang === 'vi' ? 'EN' : 'VI'}
+                        </button>
+                    </div>
+
+                    <h1 className="text-center font-black text-slate-800 mb-8 uppercase tracking-tighter main-title">
+                        {t.appNamePrefix} <span className="text-blue-600">{t.appNameSuffix}</span>
+                    </h1>
+
+                    <div className="flex justify-between mb-12 relative px-2">
+                        <div className="absolute top-5 left-0 w-full h-1 bg-slate-200 -z-0"></div>
+                        {t.steps.map((s, i) => (
+                            <div key={i} onClick={() => setActiveStep(i+1)} className="relative z-10 flex flex-col items-center cursor-pointer group">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${activeStep === i+1 ? 'bg-blue-600 text-white scale-110 shadow-lg ring-4 ring-blue-100' : activeStep > i+1 ? 'bg-emerald-500 text-white' : 'bg-white border-2 text-slate-400'}`}>
+                                    {activeStep > i+1 ? <Icon name="check-circle-2"/> : i+1}
+                                </div>
+                                <span className={`font-bold mt-2 uppercase hidden md:block text-small ${activeStep === i+1 ? 'text-blue-600' : 'text-slate-400'}`}>{s}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    <main className="min-h-[500px]">
+                        {activeStep === 1 && <WarmupTab onNext={setActiveStep} t={t} />}
+                        {activeStep === 2 && <SurveyTab survey={survey} setSurvey={setSurvey} onNext={setActiveStep} t={t} />}
+                        {activeStep === 3 && <DataCollectionTab survey={survey} responses={responses} setResponses={setResponses} onNext={setActiveStep} t={t} />}
+                        {activeStep === 4 && <AnalysisTab onNext={setActiveStep} t={t} />}
+                        {activeStep === 5 && <ClosureTab t={t} />}
+                    </main>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
