@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="App 1 NCKH: Data types - Nominal, Ordinal, Continuous. Interactive classification, variables, reflection. Bilingual EN-VN." />
+  <title>App 1 – Data types & Measurement | NCKH</title>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@0.400.0"></script>
+  <style>
+    body { font-family: 'Be Vietnam Pro', system-ui, sans-serif; background: #f8fafc; color: #0f172a; }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,.08); }
+    .fade-in { animation: fadeIn 0.35s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .progress-bar { transition: width 0.4s ease; }
+    textarea, input, select { font-family: inherit; }
+    html, body { min-height: 100%; }
+  </style>
+</head>
+<body class="bg-slate-50">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    const Icon = ({ name, className = "w-4 h-4" }) => {
+      const ref = useRef(null);
+      useEffect(() => {
+        if (window.lucide && ref.current) {
+          ref.current.innerHTML = "";
+          const el = document.createElement("i");
+          el.setAttribute("data-lucide", name);
+          el.className = className;
+          ref.current.appendChild(el);
+          window.lucide.createIcons({ attrs: { class: className }, nameAttr: "data-lucide" });
+        }
+      }, [name, className]);
+      return <span ref={ref} className={"inline-flex items-center justify-center " + className} />;
+    };
+
+    const STORAGE_KEY = "nckh_app1_v2";
+
+    const I18N = {
+      vi: {
+        appLabel: "NCKH · App 1",
+        title: "Loại dữ liệu & Đo lường",
+        points: "Điểm tương tác",
+        streak: "liên tiếp",
+        phases: ["Làm quen", "Phân loại", "So sánh", "Nghiên cứu", "Phản tư", "Tổng kết"],
+        whyTitle: "Vì sao cần phân loại dữ liệu?",
+        whyBody: "Trong nghiên cứu khoa học, loại dữ liệu quyết định em được phép dùng phép thống kê nào và kết luận đến mức nào. Chọn sai loại → phân tích sai → kết luận sai.",
+        examples: "Ví dụ:",
+        challenge: "Thử thách tiếp theo: Em sẽ chọn rồi đặt 12 thẻ dữ liệu vào đúng nhóm. Càng đúng liên tiếp, điểm càng cao!",
+        startClassify: "Bắt đầu phân loại",
+        classifyTitle: "Phân loại thẻ dữ liệu",
+        correctCount: "đúng",
+        redo: "Làm lại",
+        pickCard: "Chọn thẻ → bấm vào một nhóm bên dưới",
+        allDone: "Hoàn thành tất cả thẻ!",
+        emptyZone: "Chưa có thẻ",
+        pickFirst: "Hãy chọn một thẻ trước!",
+        correctMsg: (text, type) => `Đúng! “${text}” là dữ liệu ${type}.`,
+        wrongMsg: (text, type) => `Chưa đúng. “${text}” không phải ${type}. Thử lại nhé!`,
+        back: "Quay lại",
+        nextCompare: "Tiếp: So sánh đặc điểm",
+        needCards: (n) => `Cần ≥ 8 thẻ đúng (${n}/12)`,
+        compareTitle: "So sánh đặc điểm",
+        compareHint: "Chọn CÓ hoặc KHÔNG cho từng ô. Đây là cách nhanh để nắm chắc khác biệt giữa 3 loại.",
+        feature: "Đặc điểm",
+        canGroup: "Có thể phân nhóm?",
+        hasOrder: "Có thứ tự cao–thấp?",
+        yes: "CÓ",
+        no: "KHÔNG",
+        checkAns: "Kiểm tra đáp án",
+        exact: "Chính xác!",
+        notExact: "Chưa đúng hết — thử lại nhé.",
+        tipTitle: "Gợi ý nhớ nhanh",
+        tip1: "Định danh: nhóm được, không có thứ tự.",
+        tip2: "Thứ bậc: nhóm được, có thứ tự (nhưng khoảng cách không đều).",
+        tip3: "Liên tục: là số đo được → vừa nhóm (nếu muốn), vừa có thứ tự “thật”.",
+        nextRQ: "Tiếp: Câu hỏi nghiên cứu",
+        applyTitle: "Áp dụng vào nghiên cứu của em",
+        rqLabel: "Câu hỏi nghiên cứu",
+        rqPh: "Ví dụ: Học sinh nam và nữ có khác nhau về mức độ hài lòng với hoạt động ngoại khóa không?",
+        varsTitle: "Biến cần đo & loại dữ liệu",
+        addVar: "+ Thêm biến",
+        varName: "Tên biến",
+        varNamePh: "VD: Giới tính",
+        dataType: "Loại dữ liệu",
+        choose: "Chọn...",
+        whyType: "Vì sao chọn loại này?",
+        whyPh: "Giải thích ngắn...",
+        remember: "Nhớ: Loại dữ liệu không chỉ là tên gọi — nó quyết định em được phép tính gì và kết luận đến đâu.",
+        nextReflect: "Tiếp: Phản tư",
+        reflectTitle: "Phản tư phương pháp",
+        reflectQ: "Nếu chọn sai loại dữ liệu, hậu quả với phép phân tích và kết luận là gì?",
+        reflectPh: "Viết ít nhất 2–3 câu. Ví dụ: Nếu coi thang Likert là liên tục rồi tính mean và chạy t-test khi không đủ điều kiện, kết luận có thể sai hoặc bị phóng đại...",
+        chars: "ký tự (gợi ý ≥ 40)",
+        says: "Kết quả nói lên…",
+        saysBody: "Loại dữ liệu phù hợp giúp chọn đúng phép thống kê và kết luận trong phạm vi cho phép.",
+        notSays: "Kết quả không nói lên…",
+        notSaysBody: "Dữ liệu không tự chứng minh nguyên nhân–kết quả; mẫu nhỏ không đại diện cho mọi học sinh.",
+        seeSummary: "Xem tổng kết",
+        doneTitle: "Hoàn thành App 1",
+        doneSub: "Em đã sẵn sàng chọn loại dữ liệu cho nghiên cứu",
+        summaryTitle: "Tóm tắt của em",
+        varsSummary: "Biến & loại dữ liệu",
+        reflection: "Phản tư",
+        nextApp2: "Bước tiếp theo (App 2)",
+        nextApp2Body: "Thiết kế câu hỏi đo lường cụ thể và thu thập dữ liệu — nhớ giữ đúng loại dữ liệu em vừa chọn.",
+        reset: "Làm lại từ đầu",
+        resetConfirm: "Xóa toàn bộ tiến độ App 1 và làm lại từ đầu?",
+        footer: "NCKH App 1 · Loại dữ liệu & Đo lường · Tiến độ tự lưu",
+        typeNominal: "Định danh (Nominal)",
+        typeOrdinal: "Thứ bậc (Ordinal)",
+        typeContinuous: "Liên tục (Continuous)",
+        shortNominal: "Định danh",
+        shortOrdinal: "Thứ bậc",
+        shortContinuous: "Liên tục",
+        descNominal: "Phân loại, không có thứ tự. Chỉ đếm tần suất, không tính trung bình.",
+        descOrdinal: "Có thứ tự mức độ, nhưng khoảng cách giữa các mức không đều. Dùng trung vị, không nên lấy trung bình một cách máy móc.",
+        descContinuous: "Số đo được, khoảng cách đều. Có thể tính Mean, SD, Min, Max và nhiều phép kiểm định tham số.",
+        exNominal: "Giới tính, Nhóm máu, Hãng điện thoại, Tổ học tập",
+        exOrdinal: "Xếp loại học lực, Thang Likert 1–5, Mức độ hài lòng",
+        exContinuous: "Chiều cao, Thời gian học (phút), Điểm số, Cân nặng",
+        cards: [
+          "Giới tính", "Thang Likert 1–5", "Chiều cao (cm)", "Hãng điện thoại",
+          "Điểm kiểm tra", "Xếp loại học lực", "Thời gian học thêm (phút)", "Tổ học tập (1,2,3…)",
+          "Mức độ hài lòng (Rất thấp → Rất cao)", "Số giờ ngủ mỗi đêm", "Nhóm máu", "Thứ hạng trong lớp"
+        ],
+        rqHints: [
+          "Nam–nữ khác nhau về mức độ hài lòng ngoại khóa?",
+          "Thời gian học thêm có liên quan đến điểm kiểm tra?",
+          "Dùng điện thoại nhiều có ảnh hưởng đến giờ ngủ?"
+        ]
+      },
+      en: {
+        appLabel: "Scientific Research · App 1",
+        title: "Data Types & Measurement",
+        points: "Interaction points",
+        streak: "streak",
+        phases: ["Learn", "Classify", "Compare", "Research", "Reflect", "Summary"],
+        whyTitle: "Why classify data types?",
+        whyBody: "In scientific research, the data type determines which statistics you may use and how far you can conclude. Wrong type → wrong analysis → wrong conclusions.",
+        examples: "Examples:",
+        challenge: "Next challenge: Select and place 12 data cards into the correct groups. Longer correct streaks earn more points!",
+        startClassify: "Start classifying",
+        classifyTitle: "Classify data cards",
+        correctCount: "correct",
+        redo: "Reset",
+        pickCard: "Select a card → tap a group below",
+        allDone: "All cards completed!",
+        emptyZone: "No cards yet",
+        pickFirst: "Please select a card first!",
+        correctMsg: (text, type) => `Correct! “${text}” is ${type} data.`,
+        wrongMsg: (text, type) => `Not yet. “${text}” is not ${type}. Try again!`,
+        back: "Back",
+        nextCompare: "Next: Compare features",
+        needCards: (n) => `Need ≥ 8 correct (${n}/12)`,
+        compareTitle: "Compare features",
+        compareHint: "Choose YES or NO for each cell. A quick way to lock in differences among the three types.",
+        feature: "Feature",
+        canGroup: "Can be grouped?",
+        hasOrder: "Has high–low order?",
+        yes: "YES",
+        no: "NO",
+        checkAns: "Check answers",
+        exact: "Perfect!",
+        notExact: "Not all correct — try again.",
+        tipTitle: "Quick memory tips",
+        tip1: "Nominal: can group, no order.",
+        tip2: "Ordinal: can group, has order (unequal intervals).",
+        tip3: "Continuous: measurable numbers → can group if needed, and has true order.",
+        nextRQ: "Next: Research question",
+        applyTitle: "Apply to your study",
+        rqLabel: "Research question",
+        rqPh: "e.g. Do male and female students differ in satisfaction with extracurricular activities?",
+        varsTitle: "Variables to measure & data types",
+        addVar: "+ Add variable",
+        varName: "Variable name",
+        varNamePh: "e.g. Gender",
+        dataType: "Data type",
+        choose: "Select...",
+        whyType: "Why this type?",
+        whyPh: "Brief reason...",
+        remember: "Remember: Data type is not just a label — it decides what you may compute and how far you may conclude.",
+        nextReflect: "Next: Reflect",
+        reflectTitle: "Method reflection",
+        reflectQ: "If you choose the wrong data type, what happens to analysis and conclusions?",
+        reflectPh: "Write at least 2–3 sentences. e.g. Treating a Likert scale as continuous and running a t-test without meeting assumptions can bias or overstate conclusions...",
+        chars: "characters (aim ≥ 40)",
+        says: "Results support…",
+        saysBody: "A suitable data type helps you pick valid statistics and stay within justified conclusions.",
+        notSays: "Results do not prove…",
+        notSaysBody: "Data alone do not prove cause–effect; a small sample does not represent all students.",
+        seeSummary: "View summary",
+        doneTitle: "App 1 complete",
+        doneSub: "You are ready to choose data types for your study",
+        summaryTitle: "Your summary",
+        varsSummary: "Variables & data types",
+        reflection: "Reflection",
+        nextApp2: "Next step (App 2)",
+        nextApp2Body: "Design concrete measurement items and collect data — keep the data types you just chose.",
+        reset: "Start over",
+        resetConfirm: "Clear all App 1 progress and start over?",
+        footer: "Research App 1 · Data types & Measurement · Progress auto-saved",
+        typeNominal: "Nominal",
+        typeOrdinal: "Ordinal",
+        typeContinuous: "Continuous",
+        shortNominal: "Nominal",
+        shortOrdinal: "Ordinal",
+        shortContinuous: "Continuous",
+        descNominal: "Categories with no order. Count frequencies only; do not compute a mean.",
+        descOrdinal: "Ordered levels with unequal intervals. Prefer the median; avoid treating the mean as automatic.",
+        descContinuous: "Measurable numbers with equal intervals. Mean, SD, Min, Max and many parametric tests are appropriate.",
+        exNominal: "Gender, Blood type, Phone brand, Class group",
+        exOrdinal: "Grade rank, Likert 1–5, Satisfaction level",
+        exContinuous: "Height, Study time (min), Test score, Weight",
+        cards: [
+          "Gender", "Likert scale 1–5", "Height (cm)", "Phone brand",
+          "Test score", "Academic rank level", "Extra study time (min)", "Class group (1,2,3…)",
+          "Satisfaction (Very low → Very high)", "Hours of sleep per night", "Blood type", "Class ranking"
+        ],
+        rqHints: [
+          "Do males and females differ in extracurricular satisfaction?",
+          "Is extra study time related to test scores?",
+          "Is heavy phone use related to sleep hours?"
+        ]
+      }
+    };
+
+    const CARD_TYPES = ["nominal", "ordinal", "continuous", "nominal", "continuous", "ordinal", "continuous", "nominal", "ordinal", "continuous", "nominal", "ordinal"];
+
+    const Btn = ({ children, onClick, disabled, variant = "primary", className = "", size = "md" }) => {
+      const base = "inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none";
+      const sizes = { sm: "px-3 py-1.5 text-sm", md: "px-4 py-2.5 text-sm", lg: "px-5 py-3 text-base" };
+      const variants = {
+        primary: "bg-blue-600 text-white hover:bg-blue-700 shadow-sm",
+        success: "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm",
+        secondary: "bg-white border-2 border-slate-200 text-slate-700 hover:border-blue-400 hover:text-blue-700",
+        ghost: "bg-transparent text-slate-600 hover:bg-slate-100",
+        danger: "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100"
+      };
+      return (
+        <button type="button" onClick={onClick} disabled={disabled} className={base + " " + sizes[size] + " " + variants[variant] + " " + className}>
+          {children}
+        </button>
+      );
+    };
+
+    function App() {
+      const [lang, setLang] = useState("vi");
+      const t = I18N[lang];
+
+      const TYPE_INFO = useMemo(() => ({
+        nominal: { label: t.typeNominal, short: t.shortNominal, color: "blue", bg: "bg-blue-50", border: "border-blue-400", text: "text-blue-800", desc: t.descNominal, examples: t.exNominal },
+        ordinal: { label: t.typeOrdinal, short: t.shortOrdinal, color: "indigo", bg: "bg-indigo-50", border: "border-indigo-400", text: "text-indigo-800", desc: t.descOrdinal, examples: t.exOrdinal },
+        continuous: { label: t.typeContinuous, short: t.shortContinuous, color: "emerald", bg: "bg-emerald-50", border: "border-emerald-400", text: "text-emerald-800", desc: t.descContinuous, examples: t.exContinuous }
+      }), [t]);
+
+      const [phase, setPhase] = useState(1);
+      const [cards, setCards] = useState(() =>
+        CARD_TYPES.map((type, i) => ({ id: i + 1, type, placed: null, tried: false }))
+      );
+      const [selectedId, setSelectedId] = useState(null);
+      const [score, setScore] = useState(0);
+      const [streak, setStreak] = useState(0);
+      const [feedback, setFeedback] = useState(null);
+      const [tableAnswers, setTableAnswers] = useState({
+        group: { nominal: "", ordinal: "", continuous: "" },
+        order: { nominal: "", ordinal: "", continuous: "" }
+      });
+      const [tableChecked, setTableChecked] = useState(false);
+      const [tableCorrect, setTableCorrect] = useState(false);
+      const [rq, setRq] = useState("");
+      const [variables, setVariables] = useState([
+        { name: "", type: "", why: "" },
+        { name: "", type: "", why: "" }
+      ]);
+      const [reflection, setReflection] = useState("");
+
+      useEffect(() => {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return;
+          const d = JSON.parse(raw);
+          if (d.lang) setLang(d.lang);
+          if (d.phase) setPhase(d.phase);
+          if (d.cards) setCards(d.cards);
+          if (d.score != null) setScore(d.score);
+          if (d.rq) setRq(d.rq);
+          if (d.variables) setVariables(d.variables);
+          if (d.reflection) setReflection(d.reflection);
+          if (d.tableAnswers) setTableAnswers(d.tableAnswers);
+        } catch (e) {}
+      }, []);
+
+      useEffect(() => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          lang, phase, cards, score, rq, variables, reflection, tableAnswers
+        }));
+      }, [lang, phase, cards, score, rq, variables, reflection, tableAnswers]);
+
+      useEffect(() => {
+        document.documentElement.lang = lang;
+      }, [lang]);
+
+      const cardText = (id) => t.cards[id - 1] || "";
+
+      const placedCount = cards.filter(c => c.placed === c.type).length;
+      const allPlacedCorrect = placedCount === cards.length;
+
+      const progressPct = useMemo(() => {
+        const weights = { 1: 10, 2: 35, 3: 20, 4: 20, 5: 15 };
+        let p = 0;
+        if (phase > 1) p += weights[1];
+        if (phase > 2) p += weights[2];
+        else if (phase === 2) p += weights[2] * (placedCount / cards.length);
+        if (phase > 3) p += weights[3];
+        else if (phase === 3 && tableCorrect) p += weights[3];
+        if (phase > 4) p += weights[4];
+        else if (phase === 4 && rq.trim().length > 20 && variables.some(v => v.name && v.type && v.why)) p += weights[4] * 0.7;
+        if (phase > 5) p += weights[5];
+        else if (phase === 5 && reflection.trim().length > 30) p += weights[5] * 0.8;
+        if (phase >= 6) p = 100;
+        return Math.min(100, Math.round(p));
+      }, [phase, placedCount, cards.length, tableCorrect, rq, variables, reflection]);
+
+      const selectCard = (id) => {
+        const c = cards.find(x => x.id === id);
+        if (!c || c.placed === c.type) return;
+        setSelectedId(id);
+        setFeedback(null);
+      };
+
+      const placeInZone = (zoneType) => {
+        if (selectedId == null) {
+          setFeedback({ ok: false, msg: t.pickFirst });
+          return;
+        }
+        const card = cards.find(c => c.id === selectedId);
+        if (!card) return;
+        const correct = card.type === zoneType;
+        setCards(prev => prev.map(c => c.id === selectedId ? { ...c, placed: zoneType, tried: true } : c));
+        if (correct) {
+          setScore(s => s + 10 + streak * 2);
+          setStreak(s => s + 1);
+          setFeedback({ ok: true, msg: t.correctMsg(cardText(card.id), TYPE_INFO[zoneType].short) });
+        } else {
+          setStreak(0);
+          setScore(s => Math.max(0, s - 2));
+          setFeedback({ ok: false, msg: t.wrongMsg(cardText(card.id), TYPE_INFO[zoneType].short) });
+          setTimeout(() => {
+            setCards(prev => prev.map(c =>
+              c.id === selectedId && c.placed !== c.type ? { ...c, placed: null } : c
+            ));
+          }, 900);
+        }
+        setSelectedId(null);
+      };
+
+      const resetCards = () => {
+        setCards(CARD_TYPES.map((type, i) => ({ id: i + 1, type, placed: null, tried: false })));
+        setSelectedId(null);
+        setFeedback(null);
+        setStreak(0);
+      };
+
+      const correctTable = {
+        group: { nominal: "yes", ordinal: "yes", continuous: "yes" },
+        order: { nominal: "no", ordinal: "yes", continuous: "yes" }
+      };
+
+      const checkTable = () => {
+        const ok =
+          tableAnswers.group.nominal === correctTable.group.nominal &&
+          tableAnswers.group.ordinal === correctTable.group.ordinal &&
+          tableAnswers.group.continuous === correctTable.group.continuous &&
+          tableAnswers.order.nominal === correctTable.order.nominal &&
+          tableAnswers.order.ordinal === correctTable.order.ordinal &&
+          tableAnswers.order.continuous === correctTable.order.continuous;
+        setTableChecked(true);
+        setTableCorrect(ok);
+        if (ok) setScore(s => s + 15);
+      };
+
+      const updateVar = (i, field, val) => {
+        setVariables(prev => {
+          const next = [...prev];
+          next[i] = { ...next[i], [field]: val };
+          return next;
+        });
+      };
+      const addVar = () => {
+        if (variables.length >= 5) return;
+        setVariables(prev => [...prev, { name: "", type: "", why: "" }]);
+      };
+      const removeVar = (i) => {
+        if (variables.length <= 1) return;
+        setVariables(prev => prev.filter((_, idx) => idx !== i));
+      };
+
+      const canGoResearch = allPlacedCorrect || placedCount >= 8;
+      const canGoReflect = rq.trim().length > 15 && variables.filter(v => v.name && v.type).length >= 1;
+      const canFinish = reflection.trim().length > 25;
+
+      const toggleLang = () => setLang(l => l === "vi" ? "en" : "vi");
+
+      return (
+        <div className="max-w-4xl mx-auto px-3 py-4 sm:px-5 sm:py-6">
+          <header className="mb-5">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-blue-600">{t.appLabel}</p>
+                <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 leading-tight">{t.title}</h1>
+              </div>
+              <div className="flex items-center gap-2 sm:gap-3">
+                <button
+                  type="button"
+                  onClick={toggleLang}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 border-slate-200 bg-white text-xs font-bold text-slate-700 hover:border-blue-400 hover:text-blue-700 transition"
+                  title="EN / VN"
+                >
+                  <span className={lang === "vi" ? "text-blue-600" : "text-slate-400"}>VN</span>
+                  <span className="text-slate-300">|</span>
+                  <span className={lang === "en" ? "text-blue-600" : "text-slate-400"}>EN</span>
+                </button>
+                <div className="text-right">
+                  <p className="text-xs text-slate-500">{t.points}</p>
+                  <p className="text-lg font-bold text-amber-600">{score}</p>
+                </div>
+                {streak >= 2 && (
+                  <div className="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                    <Icon name="flame" className="w-3.5 h-3.5" /> {streak} {t.streak}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden mb-3">
+              <div className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 progress-bar rounded-full" style={{ width: progressPct + "%" }} />
+            </div>
+
+            <div className="flex gap-1 overflow-x-auto pb-1">
+              {t.phases.map((label, idx) => {
+                const id = idx + 1;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => { if (id <= phase || id === 1) setPhase(id); }}
+                    className={"shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition " + (
+                      phase === id ? "bg-blue-600 text-white shadow" :
+                      phase > id ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-400"
+                    )}
+                  >
+                    {id}. {label}
+                  </button>
+                );
+              })}
+            </div>
+          </header>
+
+          <main className="fade-in" key={phase + lang}>
+            {phase === 1 && (
+              <section className="space-y-5">
+                <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+                  <h2 className="font-bold text-lg mb-2 flex items-center gap-2">
+                    <Icon name="book-open" className="w-5 h-5 text-blue-600" /> {t.whyTitle}
+                  </h2>
+                  <p className="text-slate-600 text-sm leading-relaxed">{t.whyBody}</p>
+                </div>
+                <div className="grid sm:grid-cols-3 gap-3">
+                  {Object.entries(TYPE_INFO).map(([key, info]) => (
+                    <div key={key} className={"rounded-2xl border-2 " + info.border + " " + info.bg + " p-4 card-hover transition"}>
+                      <h3 className={"font-bold " + info.text + " mb-2"}>{info.label}</h3>
+                      <p className="text-sm text-slate-700 mb-3 leading-relaxed">{info.desc}</p>
+                      <p className="text-xs text-slate-500"><span className="font-semibold">{t.examples}</span> {info.examples}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900">{t.challenge}</div>
+                <div className="flex justify-end">
+                  <Btn onClick={() => setPhase(2)} variant="primary" size="lg">
+                    {t.startClassify} <Icon name="arrow-right" className="w-4 h-4" />
+                  </Btn>
+                </div>
+              </section>
+            )}
+
+            {phase === 2 && (
+              <section className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="font-bold text-lg flex items-center gap-2">
+                    <Icon name="layout-grid" className="w-5 h-5 text-blue-600" /> {t.classifyTitle}
+                  </h2>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="font-semibold text-emerald-700">{placedCount}/{cards.length} {t.correctCount}</span>
+                    <Btn onClick={resetCards} variant="ghost" size="sm">{t.redo}</Btn>
+                  </div>
+                </div>
+                <div className="bg-white rounded-2xl border border-slate-200 p-4">
+                  <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">{t.pickCard}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {cards.filter(c => c.placed !== c.type).map(c => (
+                      <button key={c.id} type="button" onClick={() => selectCard(c.id)}
+                        className={"px-3 py-2 rounded-xl border-2 text-sm font-medium transition " + (
+                          selectedId === c.id
+                            ? "border-blue-500 bg-blue-50 text-blue-800 ring-2 ring-blue-200 scale-105"
+                            : "border-slate-200 bg-slate-50 hover:border-blue-300 text-slate-800"
+                        )}>
+                        {cardText(c.id)}
+                      </button>
+                    ))}
+                    {cards.every(c => c.placed === c.type) && (
+                      <p className="text-emerald-600 font-semibold text-sm py-2">{t.allDone}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-3 gap-3">
+                  {["nominal", "ordinal", "continuous"].map(zone => {
+                    const info = TYPE_INFO[zone];
+                    const inZone = cards.filter(c => c.placed === zone && c.type === zone);
+                    return (
+                      <div key={zone} onClick={() => placeInZone(zone)}
+                        className={"rounded-2xl border-2 border-dashed " + info.border + " " + info.bg + " p-3 min-h-[140px] cursor-pointer transition hover:brightness-95 " + (
+                          selectedId != null ? "ring-2 ring-offset-1 ring-blue-300" : ""
+                        )}>
+                        <p className={"font-bold text-sm " + info.text + " mb-2"}>{info.short}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {inZone.map(c => (
+                            <span key={c.id} className="text-xs bg-white/90 border border-white px-2 py-1 rounded-lg font-medium shadow-sm">{cardText(c.id)}</span>
+                          ))}
+                          {inZone.length === 0 && <span className="text-xs text-slate-400 italic">{t.emptyZone}</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {feedback && (
+                  <div className={"rounded-xl px-4 py-3 text-sm font-medium fade-in " + (
+                    feedback.ok ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-red-50 text-red-800 border border-red-200"
+                  )}>
+                    {feedback.ok ? "✓ " : "✗ "}{feedback.msg}
+                  </div>
+                )}
+                <div className="flex justify-between pt-2">
+                  <Btn onClick={() => setPhase(1)} variant="ghost">{t.back}</Btn>
+                  <Btn onClick={() => setPhase(3)} disabled={!canGoResearch} variant="success">
+                    {allPlacedCorrect ? t.nextCompare : t.needCards(placedCount)}
+                    <Icon name="arrow-right" className="w-4 h-4" />
+                  </Btn>
+                </div>
+              </section>
+            )}
+
+            {phase === 3 && (
+              <section className="space-y-4">
+                <h2 className="font-bold text-lg flex items-center gap-2">
+                  <Icon name="table-2" className="w-5 h-5 text-blue-600" /> {t.compareTitle}
+                </h2>
+                <p className="text-sm text-slate-600">{t.compareHint}</p>
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-100 text-slate-700">
+                        <th className="p-3 text-left font-semibold">{t.feature}</th>
+                        <th className="p-3 text-center font-semibold text-blue-700">{t.shortNominal}</th>
+                        <th className="p-3 text-center font-semibold text-indigo-700">{t.shortOrdinal}</th>
+                        <th className="p-3 text-center font-semibold text-emerald-700">{t.shortContinuous}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-t">
+                        <td className="p-3 font-medium">{t.canGroup}</td>
+                        {["nominal", "ordinal", "continuous"].map(k => (
+                          <td key={k} className="p-2">
+                            <select className="w-full border rounded-lg p-2 bg-slate-50" value={tableAnswers.group[k]}
+                              onChange={e => { setTableAnswers(a => ({ ...a, group: { ...a.group, [k]: e.target.value } })); setTableChecked(false); }}>
+                              <option value="">--</option>
+                              <option value="yes">{t.yes}</option>
+                              <option value="no">{t.no}</option>
+                            </select>
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-t bg-slate-50/50">
+                        <td className="p-3 font-medium">{t.hasOrder}</td>
+                        {["nominal", "ordinal", "continuous"].map(k => (
+                          <td key={k} className="p-2">
+                            <select className="w-full border rounded-lg p-2 bg-white" value={tableAnswers.order[k]}
+                              onChange={e => { setTableAnswers(a => ({ ...a, order: { ...a.order, [k]: e.target.value } })); setTableChecked(false); }}>
+                              <option value="">--</option>
+                              <option value="yes">{t.yes}</option>
+                              <option value="no">{t.no}</option>
+                            </select>
+                          </td>
+                        ))}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Btn onClick={checkTable} variant="secondary">{t.checkAns}</Btn>
+                  {tableChecked && tableCorrect && <span className="text-emerald-700 font-semibold text-sm">{t.exact}</span>}
+                  {tableChecked && !tableCorrect && <span className="text-red-600 font-semibold text-sm">{t.notExact}</span>}
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600">
+                  <p className="font-semibold text-slate-800 mb-1">{t.tipTitle}</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>{t.tip1}</li>
+                    <li>{t.tip2}</li>
+                    <li>{t.tip3}</li>
+                  </ul>
+                </div>
+                <div className="flex justify-between pt-2">
+                  <Btn onClick={() => setPhase(2)} variant="ghost">{t.back}</Btn>
+                  <Btn onClick={() => setPhase(4)} disabled={!tableCorrect} variant="success">
+                    {t.nextRQ} <Icon name="arrow-right" className="w-4 h-4" />
+                  </Btn>
+                </div>
+              </section>
+            )}
+
+            {phase === 4 && (
+              <section className="space-y-5">
+                <h2 className="font-bold text-lg flex items-center gap-2">
+                  <Icon name="search" className="w-5 h-5 text-blue-600" /> {t.applyTitle}
+                </h2>
+                <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
+                  <label className="font-semibold text-sm text-slate-800">{t.rqLabel}</label>
+                  <textarea className="w-full border border-slate-200 rounded-xl p-3 text-sm min-h-[72px] focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                    placeholder={t.rqPh} value={rq} onChange={e => setRq(e.target.value)} />
+                  <div className="flex flex-wrap gap-2">
+                    {t.rqHints.map((s, i) => (
+                      <button key={i} type="button" onClick={() => setRq(s)}
+                        className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium">{s}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-sm">{t.varsTitle}</h3>
+                    <Btn onClick={addVar} variant="secondary" size="sm">{t.addVar}</Btn>
+                  </div>
+                  {variables.map((v, i) => (
+                    <div key={i} className="grid grid-cols-1 sm:grid-cols-12 gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                      <div className="sm:col-span-3">
+                        <label className="text-xs text-slate-500">{t.varName}</label>
+                        <input className="w-full border rounded-lg p-2 text-sm" value={v.name}
+                          onChange={e => updateVar(i, "name", e.target.value)} placeholder={t.varNamePh} />
+                      </div>
+                      <div className="sm:col-span-3">
+                        <label className="text-xs text-slate-500">{t.dataType}</label>
+                        <select className="w-full border rounded-lg p-2 text-sm bg-white" value={v.type}
+                          onChange={e => updateVar(i, "type", e.target.value)}>
+                          <option value="">{t.choose}</option>
+                          <option value="nominal">{t.shortNominal}</option>
+                          <option value="ordinal">{t.shortOrdinal}</option>
+                          <option value="continuous">{t.shortContinuous}</option>
+                        </select>
+                      </div>
+                      <div className="sm:col-span-5">
+                        <label className="text-xs text-slate-500">{t.whyType}</label>
+                        <input className="w-full border rounded-lg p-2 text-sm" value={v.why}
+                          onChange={e => updateVar(i, "why", e.target.value)} placeholder={t.whyPh} />
+                      </div>
+                      <div className="sm:col-span-1 flex items-end justify-center">
+                        <button type="button" onClick={() => removeVar(i)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
+                          <Icon name="trash-2" className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg p-2.5"><strong>{t.remember}</strong></p>
+                </div>
+                <div className="flex justify-between pt-1">
+                  <Btn onClick={() => setPhase(3)} variant="ghost">{t.back}</Btn>
+                  <Btn onClick={() => setPhase(5)} disabled={!canGoReflect} variant="success">
+                    {t.nextReflect} <Icon name="arrow-right" className="w-4 h-4" />
+                  </Btn>
+                </div>
+              </section>
+            )}
+
+            {phase === 5 && (
+              <section className="space-y-5">
+                <h2 className="font-bold text-lg flex items-center gap-2">
+                  <Icon name="lightbulb" className="w-5 h-5 text-amber-500" /> {t.reflectTitle}
+                </h2>
+                <div className="bg-gradient-to-br from-amber-50 to-emerald-50 border border-amber-200 rounded-2xl p-5 space-y-3">
+                  <p className="font-semibold text-slate-800">{t.reflectQ}</p>
+                  <textarea className="w-full border border-amber-200 rounded-xl p-3 text-sm min-h-[120px] bg-white focus:outline-none focus:ring-2 focus:ring-amber-200"
+                    placeholder={t.reflectPh} value={reflection} onChange={e => setReflection(e.target.value)} />
+                  <p className="text-xs text-slate-500">{reflection.trim().length} {t.chars}</p>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 text-sm">
+                    <p className="font-semibold text-emerald-700 mb-1">{t.says}</p>
+                    <p className="text-slate-600">{t.saysBody}</p>
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 text-sm">
+                    <p className="font-semibold text-red-600 mb-1">{t.notSays}</p>
+                    <p className="text-slate-600">{t.notSaysBody}</p>
+                  </div>
+                </div>
+                <div className="flex justify-between pt-1">
+                  <Btn onClick={() => setPhase(4)} variant="ghost">{t.back}</Btn>
+                  <Btn onClick={() => setPhase(6)} disabled={!canFinish} variant="success">
+                    {t.seeSummary} <Icon name="arrow-right" className="w-4 h-4" />
+                  </Btn>
+                </div>
+              </section>
+            )}
+
+            {phase === 6 && (
+              <section className="space-y-5">
+                <div className="text-center bg-slate-900 text-white rounded-2xl p-6">
+                  <p className="text-amber-400 text-xs font-bold uppercase tracking-wider mb-1">{t.doneTitle}</p>
+                  <h2 className="text-xl font-extrabold mb-2">{t.doneSub}</h2>
+                  <p className="text-slate-300 text-sm">{t.points}: <span className="text-amber-400 font-bold text-lg">{score}</span></p>
+                </div>
+                <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
+                  <h3 className="font-bold text-slate-800">{t.summaryTitle}</h3>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500 uppercase">{t.rqLabel}</p>
+                    <p className="text-sm text-slate-800 mt-0.5">{rq || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500 uppercase mb-1">{t.varsSummary}</p>
+                    <ul className="space-y-1">
+                      {variables.filter(v => v.name).map((v, i) => (
+                        <li key={i} className="text-sm text-slate-700">
+                          <span className="font-medium">{v.name}</span>
+                          {" → "}
+                          <span className="text-blue-700">{TYPE_INFO[v.type]?.short || v.type}</span>
+                          {v.why && <span className="text-slate-500"> ({v.why})</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500 uppercase">{t.reflection}</p>
+                    <p className="text-sm text-slate-700 mt-0.5 whitespace-pre-wrap">{reflection || "—"}</p>
+                  </div>
+                </div>
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-900">
+                  <p className="font-semibold mb-1">{t.nextApp2}</p>
+                  <p>{t.nextApp2Body}</p>
+                </div>
+                <div className="flex flex-wrap gap-2 justify-between">
+                  <Btn onClick={() => setPhase(5)} variant="ghost">{t.back}</Btn>
+                  <Btn onClick={() => {
+                    if (window.confirm(t.resetConfirm)) {
+                      localStorage.removeItem(STORAGE_KEY);
+                      window.location.reload();
+                    }
+                  }} variant="danger" size="sm">{t.reset}</Btn>
+                </div>
+              </section>
+            )}
+          </main>
+
+          <footer className="mt-8 pt-4 border-t border-slate-200 text-center text-xs text-slate-400">{t.footer}</footer>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
